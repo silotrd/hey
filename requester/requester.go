@@ -55,7 +55,7 @@ type Work struct {
 
 	// RequestFunc is a function to generate requests. If it is nil, then
 	// Request and RequestData are cloned for each request.
-	RequestFunc func() *http.Request
+	RequestFunc func(r *http.Request) *http.Request
 
 	// N is the total number of requests to make.
 	N int
@@ -152,7 +152,7 @@ func (b *Work) makeRequest(c *http.Client) {
 	var dnsDuration, connDuration, resDuration, reqDuration, delayDuration time.Duration
 	var req *http.Request
 	if b.RequestFunc != nil {
-		req = b.RequestFunc()
+		req = b.RequestFunc(b.Request)
 	} else {
 		req = cloneRequest(b.Request, b.RequestBody)
 	}

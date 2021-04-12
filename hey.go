@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"plugin"
 
 	"github.com/rakyll/hey/requester"
 )
@@ -48,6 +49,7 @@ var (
 	authHeader  = flag.String("a", "", "")
 	hostHeader  = flag.String("host", "", "")
 	userAgent   = flag.String("U", "", "")
+	plug        = flag.String("p", "", "填写plugin的名字，需要带上.so")
 
 	output = flag.String("o", "", "")
 
@@ -64,7 +66,13 @@ var (
 	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
 	disableRedirects   = flag.Bool("disable-redirects", false, "")
 	proxyAddr          = flag.String("x", "", "")
+
+	adapterPlugin  AdapterPlugin
 )
+
+type AdapterPlugin interface {
+	RequestFunc(req *http.Request) *http.Request
+}
 
 var usage = `Usage: hey [options...] <url>
 
@@ -92,6 +100,7 @@ Options:
   -a  Basic authentication, username:password.
   -x  HTTP Proxy address as host:port.
   -h2 Enable HTTP/2.
+  -p  Plugin name.
 
   -host	HTTP Host header.
 
@@ -219,6 +228,23 @@ func main() {
 		header.Set("User-Agent", ua)
 	}
 
+	if *plug != "" {
+		pluginName := *plug + ".so"
+		p, err := plugin.Open(pluginName)
+		if err != nil {
+			panic(err)
+		}
+		adapter, err := p.Lookup("Adapter")
+		if err != nil {
+			panic(err)
+		}
+		var ok bool
+		adapterPlugin, ok = adapter.(AdapterPlugin)
+		if !ok {
+			panic("adapter func error")
+		}
+	}
+
 	req.Header = header
 
 	w := &requester.Work{
@@ -234,6 +260,9 @@ func main() {
 		H2:                 *h2,
 		ProxyAddr:          proxyURL,
 		Output:             *output,
+	}
+	if adapterPlugin != nil {
+		w.RequestFunc = adapterPlugin.RequestFunc
 	}
 	w.Init()
 
