@@ -7,5 +7,6 @@ release:
 
 plugin-build:
 	go build -buildmode=plugin -o=./plugin/bin/create_disbursement.so ./plugin/xendit/create_disbursement.go
+	go build -buildmode=plugin -o=./plugin/bin/create_disbursement_payment_engine.so ./plugin/payment-engine/create_disbursement.go
 
 all: plugin-build release
